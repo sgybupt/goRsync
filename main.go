@@ -93,5 +93,7 @@ func main() {
 		log.Fatalln(err)
 	}
 	defer conn.Close()
+	startTime := time.Now()
 	reveiver.ParseMsgsData(conn)
+	fmt.Println(time.Since(startTime))
 }
