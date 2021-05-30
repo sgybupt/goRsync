@@ -22,7 +22,7 @@ PJWHash 30 26 4878 513 0 0 43.89 0 21.95
 ELFHash 30 26 4878 513 0 0 43.89 0 21.95
 */
 
-func BKDRHash16(b []byte) uint16 {
+func bkdrHash16(b []byte) uint16 {
 	var seed uint16 = 131 // 31 131 1313 13131 131313 etc..
 	var hash uint16 = 0
 	for i := 0; i < len(b); i++ {
@@ -31,7 +31,7 @@ func BKDRHash16(b []byte) uint16 {
 	return hash & 0x7FFF
 }
 
-func BKDRHash32(b []byte) uint32 {
+func bkdrHash32(b []byte) uint32 {
 	var seed uint32 = 131 // 31 131 1313 13131 131313 etc..
 	var hash uint32 = 0
 	for i := 0; i < len(b); i++ {
@@ -41,7 +41,7 @@ func BKDRHash32(b []byte) uint32 {
 }
 
 // BKDR Hash Function 64
-func BKDRHash64(b []byte) uint64 {
+func bkdrHash64(b []byte) uint64 {
 	var seed uint64 = 131 // 31 131 1313 13131 131313 etc..
 	var hash uint64 = 0
 	for i := 0; i < len(b); i++ {
@@ -50,8 +50,8 @@ func BKDRHash64(b []byte) uint64 {
 	return hash & 0x7FFFFFFFFFFFFFFF
 }
 
-func HashRoll(b []byte) string {
-	resUint64 := BKDRHash64(b)
+func Hash64(b []byte) string {
+	resUint64 := bkdrHash64(b)
 	bArray := [8]byte{
 		byte(0xFF & resUint64),
 		byte(0xFF & (resUint64 >> 8)),
@@ -65,8 +65,19 @@ func HashRoll(b []byte) string {
 	return hex.EncodeToString(bArray[:])
 }
 
-func FastHash16(b []byte) string {
-	resUint16 := BKDRHash16(b)
+func Hash32(b []byte) string {
+	resUint32 := bkdrHash32(b)
+	bArray := [8]byte{
+		byte(0xFF & resUint32),
+		byte(0xFF & (resUint32 >> 8)),
+		byte(0xFF & (resUint32 >> 16)),
+		byte(0xFF & (resUint32 >> 24)),
+	}
+	return hex.EncodeToString(bArray[:])
+}
+
+func Hash16(b []byte) string {
+	resUint16 := bkdrHash16(b)
 	bArray := [2]byte{
 		byte(0xFF & resUint16),
 		byte(0xFF & (resUint16 >> 8)),
@@ -76,12 +87,12 @@ func FastHash16(b []byte) string {
 
 func ProduceFileCSInfo(b []byte, i int64) structs.FileCSInfo {
 	md5 := HashMD5(b)
-	roll := HashRoll(b)
+	roll := Hash64(b)
 	decB, err := hex.DecodeString(roll)
 	if err != nil {
 		panic(err)
 	}
-	fastHashRoll := FastHash16(decB)
+	fastHashRoll := Hash16(decB)
 	return structs.FileCSInfo{
 		BlockIndex: i,
 		CS16:       fastHashRoll,
@@ -91,12 +102,12 @@ func ProduceFileCSInfo(b []byte, i int64) structs.FileCSInfo {
 }
 
 func ProduceFileCSInfoFast(b []byte, i int64) structs.FileCSInfo {
-	roll := HashRoll(b)
+	roll := Hash64(b)
 	decB, err := hex.DecodeString(roll)
 	if err != nil {
 		panic(err)
 	}
-	fastHashRoll := FastHash16(decB)
+	fastHashRoll := Hash16(decB)
 	return structs.FileCSInfo{
 		BlockIndex: i,
 		CS16:       fastHashRoll,

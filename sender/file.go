@@ -15,18 +15,6 @@ import (
 
 var debug = false
 
-func findSameBlock(b []byte, remoteCSMap map[string]int, remoteCS []structs.FileCSInfo) (index int, isSame bool) {
-	fcs := checksum.ProduceFileCSInfoFast(b, 0)
-	if index, ok := remoteCSMap[fcs.CS16]; ok { // 16 match
-		for i := index; remoteCS[i].CS64 == fcs.CS64 && i < len(remoteCS); i++ { // find during 16 match
-			if checksum.HashMD5(b) == remoteCS[i].CS128 { // 16 && 64 match
-				return i, true
-			}
-		}
-	}
-	return 0, false
-}
-
 func matchWriter(offset int64, chunkIndex int, w io.Writer) (err error) {
 	contentLen := 12
 	msg := make([]byte, 0, 1+4+8+4)
