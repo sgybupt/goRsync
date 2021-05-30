@@ -13,7 +13,7 @@ import (
 	"os"
 )
 
-var debug = true
+var debug = false
 
 func GetFileAllChecksum(p string, blockSize int) (fcsl []structs.FileCSInfo, err error) {
 	f, err := os.OpenFile(p, os.O_RDONLY, 0664)
@@ -39,7 +39,7 @@ func GetFileAllChecksum(p string, blockSize int) (fcsl []structs.FileCSInfo, err
 	var blockIndex int64
 	bs := make([]byte, blockSize)
 	bsTmp := make([]byte, 0, blockSize)
-	for ; ; {
+	for {
 		n, err := f.Read(bs)
 		if err != nil {
 			if err == io.EOF { // end of file
@@ -106,7 +106,7 @@ func ParseMsgsData(ir io.Reader) {
 	var cOffset int64
 	var cChunkIndex int
 	//var readMsgCount int
-	for ; ; {
+	for {
 		n, err := msgReader.Read(head)
 		if err != nil {
 			if err == io.EOF {
@@ -124,7 +124,7 @@ func ParseMsgsData(ir io.Reader) {
 		switch h {
 		case 'c':
 			cbCount := 0
-			for ; cbCount != 8+4; {
+			for cbCount != 8+4 {
 				cn, err := msgReader.Read(cContent[cbCount:])
 				if err != nil {
 					if err == io.EOF {
@@ -145,9 +145,6 @@ func ParseMsgsData(ir io.Reader) {
 					panic(err)
 				}
 			}
-			if n != 8192 {
-				fmt.Println(n)
-			}
 			newFileMd5.Write(chunk[:n])
 			if debug {
 				fmt.Println(cOffset, cChunkIndex)
@@ -156,7 +153,7 @@ func ParseMsgsData(ir io.Reader) {
 		case 'b':
 			bBytesCount := 0
 			bContent := make([]byte, dataLen)
-			for ; bBytesCount != int(dataLen); {
+			for bBytesCount != int(dataLen) {
 				bn, err := msgReader.Read(bContent[bBytesCount:])
 				if err != nil {
 					if err == io.EOF {
@@ -175,7 +172,7 @@ func ParseMsgsData(ir io.Reader) {
 			}
 		case 'm':
 			mbCount := 0
-			for ; mbCount != 16; {
+			for mbCount != 16 {
 				mn, err := msgReader.Read(mContent[mbCount:])
 				if err != nil {
 					if err == io.EOF {

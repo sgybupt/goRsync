@@ -84,15 +84,17 @@ func Checker(fp string, blockSize int, remoteCS []structs.FileCSInfo, iw io.Writ
 		return remoteCS[i].CS16 < remoteCS[j].CS16
 	})
 
-	remoteCS = append(remoteCS[:1000], remoteCS[1020:]...)
-	remoteCS = remoteCS[:0]
+	//remoteCS = append(remoteCS[:1000], remoteCS[1020:]...)
+	//remoteCS = remoteCS[:0]
 
 	hash16Map := make(map[string]int, len(remoteCS))
 	for i := 0; i < len(remoteCS); i++ {
 		if _, ok := hash16Map[remoteCS[i].CS16]; !ok {
 			hash16Map[remoteCS[i].CS16] = i
 		} else {
-			fmt.Println("hash collision: ", remoteCS[i])
+			if debug {
+				fmt.Println("hash collision: ", remoteCS[i])
+			}
 		}
 	}
 	fmt.Println("map len", len(hash16Map))
@@ -115,7 +117,7 @@ func Checker(fp string, blockSize int, remoteCS []structs.FileCSInfo, iw io.Writ
 	block := make([]byte, blockSize*256)
 	failedDataBuff := make([]byte, 0, blockSize*256) // 传输不匹配bytes
 	//var writeCount int
-	for ; r < w || !finished; {
+	for r < w || !finished {
 		buffLen := w - r
 		if buffLen < blockSize && !finished { // 不足block 并且还没读完文件
 			// 清除buff中已读数据
@@ -138,7 +140,7 @@ func Checker(fp string, blockSize int, remoteCS []structs.FileCSInfo, iw io.Writ
 			}
 		} else { // buff足够使用, 或者 已经读完文件
 			// 数据处理部分
-			for ; w-r >= blockSize; { // read buff
+			for w-r >= blockSize { // read buff
 				var match bool
 				var matchBlockIndex int
 				fcs := checksum.ProduceFileCSInfoFast(buff[r:r+blockSize], 0)
@@ -242,7 +244,6 @@ func Checker(fp string, blockSize int, remoteCS []structs.FileCSInfo, iw io.Writ
 		}
 	}
 	localFileMD5Str := hex.EncodeToString(localFileMD5.Sum(nil))
-	fmt.Println(localFileMD5Str)
 	//fmt.Println(writeCount)
 	err = localFileChecksumWrite(localFileMD5Str, iw)
 	return err
