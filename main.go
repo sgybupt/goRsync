@@ -6,7 +6,6 @@ import (
 	"goSync/sender"
 	"log"
 	"net"
-	"sort"
 	"time"
 )
 
@@ -15,10 +14,6 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-
-	sort.Slice(fCSInfo, func(i, j int) bool {
-		return fCSInfo[i].CS16 < fCSInfo[j].CS16
-	})
 
 	listen, err := net.Listen("tcp", "127.0.0.1:10023")
 	if err != nil {
