@@ -82,6 +82,7 @@ func main() {
 		//var buff BuffChunk
 		//buff.Init(math.MaxInt32)
 		//buffChan := bufio.NewReadWriter(bufio.NewReader(&buff), bufio.NewWriter(&buff))
+		// buffChan.Flush()  // DO NOT FORGET TO FLUSH
 
 		err = sender.Checker("/Users/su/ftp_test/190321153853126488.mp4", 8192, fCSInfo, buffChan)
 		if err != nil {
