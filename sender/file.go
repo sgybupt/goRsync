@@ -95,15 +95,15 @@ func Checker(fp string, blockSize int, remoteCS []structs.FileCSInfo, iw io.Writ
 	if err != nil {
 		return err
 	}
-
 	defer f.Close()
 
 	localFileMD5 := md5.New()
 
 	var dataIndex int64
+	const multiBlockNum = 8 // block预读取数量
 	buff := make([]byte, 0, blockSize*256)
 	block := make([]byte, blockSize*256)
-	failedDataBuff := make([]byte, 0, blockSize*256) // 传输不匹配bytes
+	failedDataBuff := make([]byte, 0, blockSize*multiBlockNum) // 传输不匹配bytes
 	//var writeCount int
 	for r < w || !finished {
 		buffLen := w - r
@@ -165,7 +165,7 @@ func Checker(fp string, blockSize int, remoteCS []structs.FileCSInfo, iw io.Writ
 				} else {
 					// mis match
 					failedDataBuff = append(failedDataBuff, buff[r])
-					if len(failedDataBuff) >= blockSize*256 { // 超过一定容限
+					if len(failedDataBuff) >= blockSize*multiBlockNum { // 超过一定容限
 						err = mismatchWriter(dataIndex, failedDataBuff, iw)
 						//writeCount += 1
 

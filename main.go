@@ -95,6 +95,6 @@ func main() {
 	}
 	defer conn.Close()
 	startTime := time.Now()
-	reveiver.ParseMsgsData(conn)
+	reveiver.ParseMsgsData("/Users/su/ftp_test/190321153853126488.mp4", 8192, conn)
 	fmt.Println(time.Since(startTime))
 }

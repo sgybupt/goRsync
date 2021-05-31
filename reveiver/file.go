@@ -10,6 +10,7 @@ import (
 	"goSync/checksum"
 	"goSync/structs"
 	"io"
+	"log"
 	"os"
 )
 
@@ -34,13 +35,14 @@ func GetFileAllChecksum(p string, blockSize int) (fcsl []structs.FileCSInfo, err
 	fmt.Println("file size ", fileSize)
 	fmt.Println("block count ", blockCount)
 
+	fileReadBuf := bufio.NewReaderSize(f, blockSize*256)
 	fcsl = make([]structs.FileCSInfo, 0, blockCount)
 
 	var blockIndex int64
 	bs := make([]byte, blockSize)
 	bsTmp := make([]byte, 0, blockSize)
 	for {
-		n, err := f.Read(bs)
+		n, err := fileReadBuf.Read(bs)
 		if err != nil {
 			if err == io.EOF { // end of file
 				fcsl = append(fcsl, checksum.ProduceFileCSInfo(bsTmp, blockIndex))
@@ -69,37 +71,44 @@ func GetFileAllChecksum(p string, blockSize int) (fcsl []structs.FileCSInfo, err
 	return fcsl, nil
 }
 
-/*
-// c, offset, chunkIndex, \n
-func matchWriter(offset int64, chunkIndex int, w io.Writer) (err error) {
-	contentLen := 12
-	msg := make([]byte, 0, 1+4+8+4)
-	_offset := make([]byte, 8)
-	_chunkIndex := make([]byte, 4)
-	_contentLen := make([]byte, 4)
-	binary.LittleEndian.PutUint64(_offset, uint64(offset))
-	binary.LittleEndian.PutUint32(_chunkIndex, uint32(chunkIndex))
-	binary.LittleEndian.PutUint32(_contentLen, uint32(contentLen))
-	msg = append(msg, 'c')
-	msg = append(msg, _contentLen...)
-	msg = append(msg, _offset...)
-	msg = append(msg, _chunkIndex...)
-	_, err = w.Write(msg)
-	return
+func checkFileIsExist(filename string) bool {
+	if _, err := os.Stat(filename); os.IsNotExist(err) {
+		return false
+	}
+	return true
 }
-*/
 
-func ParseMsgsData(ir io.Reader) {
-	f, err := os.OpenFile("/Users/su/ftp_test/190321153853126488.mp4", os.O_RDONLY, 0664)
+func ParseMsgsData(fp string, blockSize int, ir io.Reader) {
+	f, err := os.OpenFile(fp, os.O_RDONLY, 0664)
 	if err != nil {
 		panic(nil)
 	}
 	defer f.Close()
 
-	chunk := make([]byte, 8192)
+	fNew := new(os.File)
+
+	if checkFileIsExist(fp + ".new") {
+		_ = os.Remove(fp + ".new")
+		fNew, err = os.OpenFile(fp+".new", os.O_CREATE|os.O_WRONLY, 0666)
+	} else {
+		fNew, err = os.OpenFile(fp+".new", os.O_CREATE|os.O_WRONLY, 0666)
+	}
+	if err != nil {
+		panic(err)
+	}
+	defer fNew.Close()
+
+	chunk := make([]byte, blockSize)
 	newFileMd5 := md5.New()
 
-	msgReader := bufio.NewReader(ir)
+	msgReader := bufio.NewReaderSize(ir, blockSize*256)
+	newFileWriter := bufio.NewWriterSize(fNew, blockSize*256)
+	defer func() {
+		err = newFileWriter.Flush()
+		if err != nil {
+			log.Println("[Error]: flush data to file failed with err:", err)
+		}
+	}()
 	head := make([]byte, 1+4)
 	cContent := make([]byte, 8+4)
 	mContent := make([]byte, 16)
@@ -137,7 +146,7 @@ func ParseMsgsData(ir io.Reader) {
 			}
 			cOffset = int64(binary.LittleEndian.Uint64(cContent[0:8]))
 			cChunkIndex = int(binary.LittleEndian.Uint32(cContent[8 : 8+4]))
-			n, err := f.ReadAt(chunk, int64(cChunkIndex)*8192)
+			n, err := f.ReadAt(chunk, int64(cChunkIndex)*int64(blockSize))
 			if err != nil {
 				if err == io.EOF {
 					err = nil
@@ -146,6 +155,11 @@ func ParseMsgsData(ir io.Reader) {
 				}
 			}
 			newFileMd5.Write(chunk[:n])
+			_, err = newFileWriter.Write(chunk[:n])
+			if err != nil {
+				fmt.Println("[Error]: write failed with err:", err)
+				return
+			}
 			if debug {
 				fmt.Println(cOffset, cChunkIndex)
 			}
@@ -167,6 +181,11 @@ func ParseMsgsData(ir io.Reader) {
 			offset := int64(binary.LittleEndian.Uint64(bContent[0:8]))
 			rawData := bContent[8:]
 			newFileMd5.Write(rawData)
+			_, err = newFileWriter.Write(chunk[:n])
+			if err != nil {
+				fmt.Println("[Error]: write failed with err:", err)
+				return
+			}
 			if debug || true {
 				fmt.Println("offset: ", offset, "data: ", dataLen-8)
 			}
