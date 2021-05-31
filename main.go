@@ -46,6 +46,9 @@ func main() {
 	}
 	defer conn.Close()
 	startTime := time.Now()
-	reveiver.ParseMsgsData("/Users/su/ftp_test/190321153853126488.mp4", 8192, conn)
+	err = reveiver.ParseMsgsData("/Users/su/ftp_test/190321153853126488.mp4", 8192, conn)
+	if err != nil {
+		panic(err)
+	}
 	fmt.Println(time.Since(startTime))
 }

@@ -78,7 +78,7 @@ func checkFileIsExist(filename string) bool {
 	return true
 }
 
-func ParseMsgsData(fp string, blockSize int, ir io.Reader) {
+func ParseMsgsData(fp string, blockSize int, ir io.Reader) (err error) {
 	f, err := os.OpenFile(fp, os.O_RDONLY, 0664)
 	if err != nil {
 		panic(nil)
@@ -94,7 +94,7 @@ func ParseMsgsData(fp string, blockSize int, ir io.Reader) {
 		fNew, err = os.OpenFile(fp+".new", os.O_CREATE|os.O_WRONLY, 0666)
 	}
 	if err != nil {
-		panic(err)
+		return err
 	}
 	defer fNew.Close()
 
@@ -119,13 +119,12 @@ func ParseMsgsData(fp string, blockSize int, ir io.Reader) {
 		n, err := msgReader.Read(head)
 		if err != nil {
 			if err == io.EOF {
-				fmt.Println("EOF")
 				break
 			}
 			panic(err)
 		}
 		if n != 1+4 {
-			panic(errors.New("fail read head"))
+			return errors.New("fail read head")
 		}
 
 		h, dataLen := head[0], binary.LittleEndian.Uint32(head[1:5]) // content length
@@ -137,9 +136,9 @@ func ParseMsgsData(fp string, blockSize int, ir io.Reader) {
 				cn, err := msgReader.Read(cContent[cbCount:])
 				if err != nil {
 					if err == io.EOF {
-						panic(errors.New("protocol wrong"))
+						return errors.New("protocol wrong")
 					} else {
-						panic(err)
+						return err
 					}
 				}
 				cbCount += cn
@@ -149,16 +148,16 @@ func ParseMsgsData(fp string, blockSize int, ir io.Reader) {
 			n, err := f.ReadAt(chunk, int64(cChunkIndex)*int64(blockSize))
 			if err != nil {
 				if err == io.EOF {
-					err = nil
+					err = nil // 此处error 被忽略, 因为最后一个chunk被读取的时候会返回eof
 				} else {
-					panic(err)
+					return nil
 				}
 			}
 			newFileMd5.Write(chunk[:n])
 			_, err = newFileWriter.Write(chunk[:n])
 			if err != nil {
 				fmt.Println("[Error]: write failed with err:", err)
-				return
+				return err
 			}
 			if debug {
 				fmt.Println(cOffset, cChunkIndex)
@@ -171,9 +170,9 @@ func ParseMsgsData(fp string, blockSize int, ir io.Reader) {
 				bn, err := msgReader.Read(bContent[bBytesCount:])
 				if err != nil {
 					if err == io.EOF {
-						panic(errors.New("protocol wrong"))
+						return errors.New("protocol wrong")
 					} else {
-						panic(err)
+						return err
 					}
 				}
 				bBytesCount += bn
@@ -184,7 +183,7 @@ func ParseMsgsData(fp string, blockSize int, ir io.Reader) {
 			_, err = newFileWriter.Write(chunk[:n])
 			if err != nil {
 				fmt.Println("[Error]: write failed with err:", err)
-				return
+				return err
 			}
 			if debug || true {
 				fmt.Println("offset: ", offset, "data: ", dataLen-8)
@@ -199,7 +198,7 @@ func ParseMsgsData(fp string, blockSize int, ir io.Reader) {
 						goto final
 
 					} else {
-						panic(err)
+						return err
 					}
 				}
 				mbCount += mn
@@ -207,10 +206,11 @@ func ParseMsgsData(fp string, blockSize int, ir io.Reader) {
 			fmt.Println("final file checksum expected:", hex.EncodeToString(mContent))
 			goto final
 		default:
-			panic(errors.New("wrong msg"))
+			return errors.New("wrong msg")
 		}
 	}
 final:
 	fmt.Println("new file checksum", hex.EncodeToString(newFileMd5.Sum(nil)))
+	return nil
 	//fmt.Println(readMsgCount)
 }
