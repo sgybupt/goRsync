@@ -59,6 +59,7 @@ func main() {
 	}
 	fmt.Println(time.Since(startTime))
 
+	// 本地测试检查
 	fClient, _ := os.OpenFile(clientFilePath, os.O_RDONLY, os.ModePerm)
 	fClientChecksum := md5.New()
 	block := make([]byte, 4096)

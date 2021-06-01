@@ -189,7 +189,7 @@ func ParseMsgsData(fp string, blockSize int, ir io.Reader) (err error) {
 				return err
 			}
 			if debug || true {
-				fmt.Println("offset: ", offset, "data: ", dataLen-8)
+				fmt.Println("offset: ", offset, "data: ", dataLen-16)
 			}
 		case 'm':
 			mbCount := 0
