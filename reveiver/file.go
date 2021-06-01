@@ -34,6 +34,7 @@ func GetFileAllChecksum(p string, blockSize int) (fcsl []structs.FileCSInfo, err
 	}
 	fmt.Println("file size ", fileSize)
 	fmt.Println("block count ", blockCount)
+	fileChecksum := md5.New()
 
 	fileReadBuf := bufio.NewReaderSize(f, blockSize*256)
 	fcsl = make([]structs.FileCSInfo, 0, blockCount)
@@ -43,9 +44,9 @@ func GetFileAllChecksum(p string, blockSize int) (fcsl []structs.FileCSInfo, err
 	bsTmp := make([]byte, 0, blockSize)
 	for {
 		n, err := fileReadBuf.Read(bs)
+		fileChecksum.Write(bs[:n])
 		if err != nil {
 			if err == io.EOF { // end of file
-				fcsl = append(fcsl, checksum.ProduceFileCSInfo(bsTmp, blockIndex))
 				break
 			} else {
 				return fcsl, err
@@ -68,6 +69,7 @@ func GetFileAllChecksum(p string, blockSize int) (fcsl []structs.FileCSInfo, err
 			blockIndex += 1
 		}
 	}
+	fmt.Println("server old file checksum:", hex.EncodeToString(fileChecksum.Sum(nil)))
 	return fcsl, nil
 }
 
@@ -78,6 +80,7 @@ func checkFileIsExist(filename string) bool {
 	return true
 }
 
+// fp is the local file
 func ParseMsgsData(fp string, blockSize int, ir io.Reader) (err error) {
 	f, err := os.OpenFile(fp, os.O_RDONLY, 0664)
 	if err != nil {
@@ -180,7 +183,7 @@ func ParseMsgsData(fp string, blockSize int, ir io.Reader) (err error) {
 			offset := int64(binary.LittleEndian.Uint64(bContent[0:8]))
 			rawData := bContent[8:]
 			newFileMd5.Write(rawData)
-			_, err = newFileWriter.Write(chunk[:n])
+			_, err = newFileWriter.Write(rawData)
 			if err != nil {
 				fmt.Println("[Error]: write failed with err:", err)
 				return err

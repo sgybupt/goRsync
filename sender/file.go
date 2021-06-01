@@ -232,6 +232,7 @@ func Checker(fp string, blockSize int, remoteCS []structs.FileCSInfo, iw io.Writ
 		}
 	}
 	localFileMD5Str := hex.EncodeToString(localFileMD5.Sum(nil))
+	fmt.Println("client file checksum:", localFileMD5Str)
 	//fmt.Println(writeCount)
 	err = localFileChecksumWrite(localFileMD5Str, iw)
 	return err

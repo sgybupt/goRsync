@@ -1,16 +1,24 @@
 package main
 
 import (
+	"crypto/md5"
+	"encoding/hex"
 	"fmt"
 	"goSync/reveiver"
 	"goSync/sender"
+	"io"
 	"log"
 	"net"
+	"os"
 	"time"
 )
 
+const blockSize = 4096
+const clientFilePath = "/Users/su/Downloads/B.json"
+const serverFilePath = "/Users/su/Downloads/A.json"
+
 func main() {
-	fCSInfo, err := reveiver.GetFileAllChecksum("/Users/su/ftp_test/190321153853126488.mp4", 8192)
+	fCSInfo, err := reveiver.GetFileAllChecksum(serverFilePath, blockSize)
 	if err != nil {
 		panic(err)
 	}
@@ -34,8 +42,7 @@ func main() {
 		//buff.Init(math.MaxInt32)
 		//buffChan := bufio.NewReadWriter(bufio.NewReader(&buff), bufio.NewWriter(&buff))
 		// buffChan.Flush()  // DO NOT FORGET TO FLUSH
-
-		err = sender.Checker("/Users/su/ftp_test/190321153853126488.mp4", 8192, fCSInfo, buffChan)
+		err = sender.Checker(clientFilePath, blockSize, fCSInfo, buffChan)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -46,9 +53,40 @@ func main() {
 	}
 	defer conn.Close()
 	startTime := time.Now()
-	err = reveiver.ParseMsgsData("/Users/su/ftp_test/190321153853126488.mp4", 8192, conn)
+	err = reveiver.ParseMsgsData(serverFilePath, blockSize, conn)
 	if err != nil {
 		panic(err)
 	}
 	fmt.Println(time.Since(startTime))
+
+	fClient, _ := os.OpenFile(clientFilePath, os.O_RDONLY, os.ModePerm)
+	fClientChecksum := md5.New()
+	block := make([]byte, 4096)
+	for {
+		n, err := fClient.Read(block)
+		if err != nil {
+			if err == io.EOF {
+				break
+			} else {
+				panic(err)
+			}
+		}
+		fClientChecksum.Write(block[:n])
+	}
+	fmt.Println("client file checksum:", hex.EncodeToString(fClientChecksum.Sum(nil)))
+
+	fServerNew, _ := os.OpenFile(serverFilePath+".new", os.O_RDONLY, os.ModePerm)
+	fServerNewChecksum := md5.New()
+	for {
+		n, err := fServerNew.Read(block)
+		if err != nil {
+			if err == io.EOF {
+				break
+			} else {
+				panic(err)
+			}
+		}
+		fServerNewChecksum.Write(block[:n])
+	}
+	fmt.Println("server new file checksum:", hex.EncodeToString(fServerNewChecksum.Sum(nil)))
 }
