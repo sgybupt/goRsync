@@ -1,15 +1,13 @@
 package main
 
 import (
-	"crypto/md5"
-	"encoding/hex"
 	"fmt"
 	"goSync/reveiver"
 	"goSync/sender"
-	"io"
+	"goSync/signalRPC"
+	"goSync/utilsFunc"
 	"log"
 	"net"
-	"os"
 	"time"
 )
 
@@ -60,34 +58,21 @@ func main() {
 	fmt.Println(time.Since(startTime))
 
 	// 本地测试检查
-	fClient, _ := os.OpenFile(clientFilePath, os.O_RDONLY, os.ModePerm)
-	fClientChecksum := md5.New()
-	block := make([]byte, 4096)
-	for {
-		n, err := fClient.Read(block)
-		if err != nil {
-			if err == io.EOF {
-				break
-			} else {
-				panic(err)
-			}
-		}
-		fClientChecksum.Write(block[:n])
+	m, err := utilsFunc.GetFileMD5(clientFilePath)
+	if err != nil {
+		panic(err)
 	}
-	fmt.Println("client file checksum:", hex.EncodeToString(fClientChecksum.Sum(nil)))
+	fmt.Println("client file checksum", m)
 
-	fServerNew, _ := os.OpenFile(serverFilePath+".new", os.O_RDONLY, os.ModePerm)
-	fServerNewChecksum := md5.New()
-	for {
-		n, err := fServerNew.Read(block)
-		if err != nil {
-			if err == io.EOF {
-				break
-			} else {
-				panic(err)
-			}
-		}
-		fServerNewChecksum.Write(block[:n])
+	m, err = utilsFunc.GetFileMD5(serverFilePath + ".new")
+	if err != nil {
+		panic(err)
 	}
-	fmt.Println("server new file checksum:", hex.EncodeToString(fServerNewChecksum.Sum(nil)))
+	fmt.Println("server new file checksum", m)
+
+	err = signalRPC.StartRPCServer()
+	if err != nil {
+		log.Fatalln(err)
+	}
+
 }

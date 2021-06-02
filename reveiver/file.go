@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"goSync/checksum"
 	"goSync/structs"
+	"goSync/utilsFunc"
 	"io"
 	"log"
 	"os"
@@ -73,13 +74,6 @@ func GetFileAllChecksum(p string, blockSize int) (fcsl []structs.FileCSInfo, err
 	return fcsl, nil
 }
 
-func checkFileIsExist(filename string) bool {
-	if _, err := os.Stat(filename); os.IsNotExist(err) {
-		return false
-	}
-	return true
-}
-
 // fp is the local file
 func ParseMsgsData(fp string, blockSize int, ir io.Reader) (err error) {
 	f, err := os.OpenFile(fp, os.O_RDONLY, 0664)
@@ -90,7 +84,7 @@ func ParseMsgsData(fp string, blockSize int, ir io.Reader) (err error) {
 
 	fNew := new(os.File)
 
-	if checkFileIsExist(fp + ".new") {
+	if utilsFunc.CheckFileIsExist(fp + ".new") {
 		_ = os.Remove(fp + ".new")
 		fNew, err = os.OpenFile(fp+".new", os.O_CREATE|os.O_WRONLY, 0666)
 	} else {
