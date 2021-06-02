@@ -78,7 +78,7 @@ func coreTest() {
 func rsyncServerStart() {
 	// rpc server start
 	go func() {
-		err := signalRPC.StartRPCServer()
+		err := signalRPC.StartRPCServer("0.0.0.0:8081")
 		if err != nil {
 			log.Fatalln(err)
 		}
