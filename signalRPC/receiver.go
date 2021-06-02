@@ -4,6 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"goSync/BasicConfig"
+	"goSync/receiver"
+	"goSync/structs"
 	"goSync/utilsFunc"
 	"log"
 	"math/rand"
@@ -16,7 +18,7 @@ import (
 
 type Receiver int
 
-func (r *Receiver) FileInfo(localFileInfo *LocalFileInfo, remoteFileInfo *RemoteFileInfo) error {
+func (r *Receiver) FileInfo(localFileInfo *LocalFileInfo, remoteFileInfo *RemoteFileInfo) (err error) {
 	fmt.Println(*localFileInfo)
 	if localFileInfo.Basic.LocalPathPrefix == nil || localFileInfo.Basic.FullFilePath == nil {
 		return errors.New("LocalPathPrefix and FullFilePath is needed")
@@ -51,7 +53,16 @@ func (r *Receiver) FileInfo(localFileInfo *LocalFileInfo, remoteFileInfo *Remote
 	return nil
 }
 
-func (r *Receiver) OpenDataPort(arg *bool, port *int) error {
+func (r *Receiver) OpenDataPort(fileInfo *GetFileChecksumInfo, port *int) (err error) {
+	if !fileInfo.RemoteFileInfo.Exist {
+		return errors.New("no such file")
+	}
+
+	if fileInfo.RemoteFileInfo.Basic.FullFilePath == nil ||
+		fileInfo.RemoteFileInfo.Basic.LocalPathPrefix == nil {
+		return errors.New("FullFilePath and LocalPathPrefix are needed")
+	}
+
 	rand.Seed(time.Now().UnixNano())
 	var randPort int
 	for {
@@ -84,6 +95,15 @@ func (r *Receiver) OpenDataPort(arg *bool, port *int) error {
 					Connection: conn,
 				})
 			}
+
+			go func() {
+				startTime := time.Now()
+				err = receiver.ParseMsgsData(*fileInfo.RemoteFileInfo.Basic.FullFilePath, fileInfo.BlockSize, conn)
+				if err != nil {
+					fmt.Println("[Error]: parse msgs error happens:", err)
+				}
+				fmt.Println(time.Since(startTime))
+			}()
 		}()
 		break
 	}
@@ -91,7 +111,7 @@ func (r *Receiver) OpenDataPort(arg *bool, port *int) error {
 	return nil
 }
 
-func (r *Receiver) CloseDataPort(port *int, reply *bool) error {
+func (r *Receiver) CloseDataPort(port *int, reply *bool) (err error) {
 	tcpConnInter, ok := Connections.Load(*port)
 	if !ok {
 		log.Println("[Info]: this port is not opened:", *port)
@@ -103,7 +123,6 @@ func (r *Receiver) CloseDataPort(port *int, reply *bool) error {
 		log.Fatal("load tcpConnection failed")
 	}
 	Connections.Delete(*port)
-	var err error
 	if tcpConn.Connection != nil {
 		err = tcpConn.Connection.Close()
 		if err != nil {
@@ -117,4 +136,18 @@ func (r *Receiver) CloseDataPort(port *int, reply *bool) error {
 	*reply = true
 	fmt.Println("close port", *port)
 	return err
+}
+
+func (r *Receiver) GetFileChecksum(fileInfo *GetFileChecksumInfo, reply *[]structs.FileCSInfo) (err error) {
+	if !fileInfo.RemoteFileInfo.Exist {
+		return errors.New("no such file")
+	}
+
+	if fileInfo.RemoteFileInfo.Basic.FullFilePath == nil ||
+		fileInfo.RemoteFileInfo.Basic.LocalPathPrefix == nil {
+		return errors.New("FullFilePath and LocalPathPrefix are needed")
+	}
+
+	*reply, err = receiver.GetFileAllChecksum(*fileInfo.RemoteFileInfo.Basic.FullFilePath, fileInfo.BlockSize)
+	return nil
 }

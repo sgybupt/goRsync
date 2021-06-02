@@ -1,4 +1,4 @@
-package reveiver
+package receiver
 
 import (
 	"bufio"
@@ -13,6 +13,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"time"
 )
 
 var debug = false
@@ -76,6 +77,7 @@ func GetFileAllChecksum(p string, blockSize int) (fcsl []structs.FileCSInfo, err
 
 // fp is the local file
 func ParseMsgsData(fp string, blockSize int, ir io.Reader) (err error) {
+	serverTime := time.Now().UnixNano()
 	f, err := os.OpenFile(fp, os.O_RDONLY, 0664)
 	if err != nil {
 		panic(nil)
@@ -83,12 +85,12 @@ func ParseMsgsData(fp string, blockSize int, ir io.Reader) (err error) {
 	defer f.Close()
 
 	fNew := new(os.File)
-
-	if utilsFunc.CheckFileIsExist(fp + ".new") {
-		_ = os.Remove(fp + ".new")
-		fNew, err = os.OpenFile(fp+".new", os.O_CREATE|os.O_WRONLY, 0666)
+	tmpFileName := fp + fmt.Sprintf("~%d", serverTime)
+	if utilsFunc.CheckFileIsExist(tmpFileName) {
+		_ = os.Remove(tmpFileName)
+		fNew, err = os.OpenFile(tmpFileName, os.O_CREATE|os.O_WRONLY, 0666)
 	} else {
-		fNew, err = os.OpenFile(fp+".new", os.O_CREATE|os.O_WRONLY, 0666)
+		fNew, err = os.OpenFile(tmpFileName, os.O_CREATE|os.O_WRONLY, 0666)
 	}
 	if err != nil {
 		return err
@@ -112,6 +114,7 @@ func ParseMsgsData(fp string, blockSize int, ir io.Reader) (err error) {
 	var cOffset int64
 	var cChunkIndex int
 	//var readMsgCount int
+	var expectFileChecksum string
 	for {
 		n, err := msgReader.Read(head)
 		if err != nil {
@@ -200,14 +203,22 @@ func ParseMsgsData(fp string, blockSize int, ir io.Reader) (err error) {
 				}
 				mbCount += mn
 			}
-			fmt.Println("final file checksum expected:", hex.EncodeToString(mContent))
+			expectFileChecksum = hex.EncodeToString(mContent)
+			fmt.Println("final file checksum expected:", expectFileChecksum)
 			goto final
 		default:
 			return errors.New("wrong msg")
 		}
 	}
 final:
-	fmt.Println("new file checksum", hex.EncodeToString(newFileMd5.Sum(nil)))
-	return nil
-	//fmt.Println(readMsgCount)
+	newFileChecksum := hex.EncodeToString(newFileMd5.Sum(nil))
+	fmt.Println("new file checksum", newFileChecksum)
+
+	if expectFileChecksum != newFileChecksum {
+		return errors.New("new file md5 is not expect, some internal error occurs")
+	} else {
+		_ = f.Close()
+		err = os.Rename(tmpFileName, fp)
+	}
+	return err
 }

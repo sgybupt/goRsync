@@ -27,3 +27,8 @@ type TCPConnection struct {
 	Listener   net.Listener
 	Connection net.Conn
 }
+
+type GetFileChecksumInfo struct {
+	RemoteFileInfo RemoteFileInfo
+	BlockSize      int
+}
