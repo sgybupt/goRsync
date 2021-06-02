@@ -6,7 +6,7 @@ var PortRangeL int
 var PortRangeH int
 
 func init() {
-	LocalPathPrefix = ""
+	LocalPathPrefix = "/Users/su/Downloads"
 	PortRangeL = 10000
 	PortRangeH = 20000
 }

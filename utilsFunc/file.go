@@ -34,3 +34,7 @@ func GetFileMD5(fp string) (m string, err error) {
 	}
 	return hex.EncodeToString(fChecksum.Sum(nil)), nil
 }
+
+func StrPtr(s string) *string {
+	return &s
+}
